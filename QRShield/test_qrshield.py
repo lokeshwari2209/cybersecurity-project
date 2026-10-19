@@ -522,6 +522,8 @@ class TestAPIEndpoints(unittest.TestCase):
             content = frontend.read()
         self.assertIn('data-scanner-img-model="improved_cnn"', content)
         self.assertIn('data-img-model="improved_cnn"', content)
+        self.assertIn('Accuracy (training notebook): 78.48%', content)
+        self.assertIn('Fixed display of the notebook', content)
         self.assertIn('Demo Mode — not a real CNN prediction', content)
         self.assertNotIn('Accuracy reported in the training notebook', content)
 
