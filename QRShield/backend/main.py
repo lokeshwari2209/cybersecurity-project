@@ -46,6 +46,7 @@ CNN_STATIC_DEMO_OUTPUT = {
     'image_model_confidence': None,
     'image_model_experimental': True,
     'image_model_demo': True,
+    'image_model_demo_label': 'Demo Mode — not a real CNN prediction',
 }
 
 sys.path.insert(0, str(TRAINING_DIR))
@@ -593,16 +594,15 @@ async def serve_index():
 
 @app.get('/health')
 async def health():
-    cnn_status = get_cnn_local_status()
     return {
         'status':             'ok',
         'url_model_loaded':   url_model is not None,
         'image_model_loaded': image_model is not None,
         'image_models_loaded': sorted(image_models.keys()),
-        'cnn_prediction_enabled': cnn_status['ready'],
-        'cnn_status_reason':  cnn_status['reason'],
+        'cnn_prediction_enabled': False,
+        'cnn_status_reason':  'Residual CNN is in demo mode; its fixed output is not a model prediction.',
         'cnn_experimental':   True,
-        'cnn_demo_mode':      not cnn_status['ready'],
+        'cnn_demo_mode':      True,
         'model_error':        MODEL_LOAD_ERROR,
         'feature_count':      len(feature_names) if feature_names else 0,
     }
@@ -621,11 +621,7 @@ async def analyze_qr(
         raise HTTPException(status_code=400, detail="Unsupported image model selection.")
     raw_bytes = await validate_and_read_image_stream(file)
     if image_model_name == 'improved_cnn':
-        cnn_status = get_cnn_local_status()
-        if cnn_status['ready']:
-            image_prediction = await asyncio.to_thread(predict_local_cnn, raw_bytes)
-        else:
-            image_prediction = predict_cnn_demo()
+        image_prediction = predict_cnn_demo()
     else:
         image_prediction = predict_image_model(image_model_name, raw_bytes)
 

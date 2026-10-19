@@ -418,8 +418,8 @@
       <div id="img-metrics-et" class="metrics-grid"></div>
       <div id="img-metrics-rf" class="metrics-grid hidden"></div>
       <div id="img-metrics-improved-cnn" class="hidden" role="status" style="color:var(--clr-muted);font-size:.9rem">
-        <strong>Accuracy reported in the training notebook: 78.48%</strong>
-        <p style="margin:.5rem 0 0">This is the notebook's final test result, not a verified measurement of the local model file. The local artifact has not been matched to that evaluation run. When real inference is unavailable, the Scanner displays a clearly marked fixed demo label instead.</p>
+        <strong>Demo Mode — not a real CNN prediction</strong>
+        <p style="margin:.5rem 0 0">Residual CNN currently displays a fixed demo label. No verified accuracy metrics are available for this deployed model.</p>
       </div>
     </div>
 
@@ -573,7 +573,7 @@ function showResults(d) {
       d.image_model_confidence != null ? (d.image_model_confidence * 100).toFixed(1) + '%' : 'N/A';
     const experimentalNotice = document.getElementById('image-model-experimental');
     experimentalNotice.textContent = d.image_model_demo === true
-      ? 'DEMO ONLY — this fixed “Phishing” label does not come from the uploaded image or the CNN model. Confidence is not available.'
+      ? 'Demo Mode — not a real CNN prediction. This fixed “Phishing” label does not come from the uploaded image or the CNN model. Confidence is not available.'
       : 'EXPERIMENTAL — verify this model result independently.';
     experimentalNotice.classList.toggle('hidden', d.image_model_experimental !== true);
     imageModelCard.classList.remove('hidden');

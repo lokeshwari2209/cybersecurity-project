@@ -344,6 +344,7 @@ class TestImageModelInference(unittest.TestCase):
         self.assertIsNone(first['image_model_confidence'])
         self.assertTrue(first['image_model_demo'])
         self.assertTrue(first['image_model_experimental'])
+        self.assertEqual(first['image_model_demo_label'], 'Demo Mode — not a real CNN prediction')
 
     def test_cnn_runtime_rejects_incompatible_tensorflow_keras(self):
         def installed_version(package):
@@ -511,8 +512,18 @@ class TestAPIEndpoints(unittest.TestCase):
         data = res.json()
         self.assertEqual(data.get('status'), 'ok')
         self.assertTrue(data.get('url_model_loaded'))
-        self.assertEqual(data.get('cnn_prediction_enabled'), main.get_cnn_local_status()['ready'])
+        self.assertFalse(data.get('cnn_prediction_enabled'))
+        self.assertTrue(data.get('cnn_demo_mode'))
         self.assertTrue(data.get('cnn_experimental'))
+
+    def test_frontend_exposes_cnn_demo_without_unverified_metrics(self):
+        frontend_path = os.path.join(THIS_DIR, 'frontend', 'index.html')
+        with open(frontend_path, encoding='utf-8') as frontend:
+            content = frontend.read()
+        self.assertIn('data-scanner-img-model="improved_cnn"', content)
+        self.assertIn('data-img-model="improved_cnn"', content)
+        self.assertIn('Demo Mode — not a real CNN prediction', content)
+        self.assertNotIn('Accuracy reported in the training notebook', content)
 
     def test_analyze_qr_uses_selected_classical_model_and_preserves_url_analysis(self):
         import main
@@ -547,20 +558,12 @@ class TestAPIEndpoints(unittest.TestCase):
                 self.assertEqual(result['model_prediction'], 'Legitimate')
                 predict.assert_called_once_with(selected_model, raw_bytes)
 
-    def test_analyze_qr_routes_cnn_locally_and_keeps_result_experimental(self):
+    def test_analyze_qr_uses_fixed_cnn_demo_even_if_local_inference_is_available(self):
         import main
 
-        prediction = {
-            'image_model': 'Residual CNN',
-            'image_model_prediction': 'Phishing',
-            'image_model_confidence': 0.8,
-            'image_model_experimental': True,
-            'image_model_threshold': 0.05,
-        }
         with (
-            patch.object(main, 'get_cnn_local_status', return_value={'ready': True, 'reason': None}),
             patch.object(main, 'validate_and_read_image_stream', new=AsyncMock(return_value=b'valid image')),
-            patch.object(main, 'predict_local_cnn', return_value=prediction) as predict,
+            patch.object(main, 'predict_local_cnn') as predict,
             patch.object(main, 'decode_qr_from_bytes', return_value=('https://example.com', 'URL', 'opencv')),
             patch.object(main, 'get_analyzable_url', return_value='https://example.com'),
             patch.object(main, 'run_url_analysis', return_value={
@@ -576,7 +579,13 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['image_model_prediction'], 'Phishing')
         self.assertTrue(response.json()['image_model_experimental'])
-        predict.assert_called_once_with(b'valid image')
+        self.assertTrue(response.json()['image_model_demo'])
+        self.assertIsNone(response.json()['image_model_confidence'])
+        self.assertEqual(
+            response.json()['image_model_demo_label'],
+            'Demo Mode — not a real CNN prediction',
+        )
+        predict.assert_not_called()
 
     def test_analyze_qr_returns_fixed_cnn_demo_if_local_runtime_is_incompatible(self):
         import main
